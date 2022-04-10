@@ -1,9 +1,163 @@
 ---
 title: "Homework02"
-output: html_document
+output: 
+  html_document:
+    theme: yeti
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+
+```{r, include=FALSE}
+install.packages('tidyverse', repos = "http://cran.us.r-project.org")
+#install.packages('tidymodels', repos = "http://cran.us.r-project.org")
+install.packages('ggplot2', repos = "http://cran.us.r-project.org")
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+```
+
+```{r}
+set.seed(231)
+```
+
+### Question 1
+```{r}
+abalone = read.csv(file="data/abalone.csv")
+abalone[, 'age'] = abalone$rings + 1.5
+ggplot(abalone, aes(x = age)) +
+        geom_histogram()
+```
+
+The ages are distributed around 11. Most of values are around 10 and 11. 
+
+
+### Question 2
+```{r}
+abalone2 = subset(abalone, select = -rings)
+
+abalone_split <- initial_split(abalone2, prop = 0.80,
+                                strata = age)
+abalone_train <- training(abalone_split)
+abalone_test <- testing(abalone_split)
+```
+
+
+### Question 3
+#### 1. dummy code any categorical predictors
+```{r}
+abalone_recipe = recipe(age ~ ., data = abalone_train) %>%
+        step_dummy(all_nominal_predictors())
+```
+
+#### 2. create interactions between
+```{r}
+abalone_recipe = abalone_recipe %>%
+        step_interact(terms = ~ starts_with('type'):shucked_weight + 
+                              longest_shell:diameter +
+                              shucked_weight:shell_weight)
+```
+
+#### 3. center all predictors, and
+```{r}
+abalone_recipe = abalone_recipe %>%
+        step_center(all_predictors())
+```
+
+#### 4. scale all predictors.
+```{r}
+abalone_recipe = abalone_recipe %>% 
+        step_scale(all_predictors())
+```
+
+```{r}
+cor(abalone$rings, abalone$age)
+```
+There is a strong positive correlation between 'rings' and 'age', because 'age' is 'rings' + 1.5. It indicates those two variables have exactly same role/effect. 
+
+
+### Question 4
+```{r}
+lm_model = linear_reg() %>%
+        set_engine('lm')
+```
+
+
+### Question 5
+```{r}
+lm_wflow <- workflow() %>% 
+  add_model(lm_model) %>% 
+  add_recipe(abalone_recipe)
+```
+
+
+#### Question 6
+```{r}
+lm_fit = fit(lm_wflow, abalone_train)
+p1 = data.frame(type='F', 
+                longest_shell = 0.50, 
+                diameter = 0.10, 
+                height = 0.30, 
+                whole_weight = 4, 
+                shucked_weight = 1, 
+                viscera_weight = 2, 
+                shell_weight = 1)
+
+predict(lm_fit, p1)
+```
+
+
+### Question 7
+#### 1
+```{r}
+abalone_metrics <- metric_set(rmse, rsq, mae)
+```
+
+#### 2
+```{r}
+train_result = predict(lm_fit, 
+                       new_data = abalone_train %>% 
+                               select(-age))
+
+train_result = bind_cols(train_result, abalone_train %>% select(age))
+```
+
+#### 3
+```{r}
+abalone_metrics(train_result, truth = age, estimate = .pred)
+```
+$R^2$ is 0.55. It means the model could explain the data approximately 50%. It is quite a disappointing result. 
+
+
+### Question 8
+$Var(\hat{f}(x_o))$, $[Bias(\hat{f}(x_0))]^2$ are the reproducible error and $Var(\epsilon)$ is the irreducible error.
+
+### Question 9
+The expected test MSE, the left term, is decomposed to Variance + Bias^2 + Irreducible error. The expected values of Variance and Bias terms would be zero by several methods such as reducing predictor or using several models. So that, the expected test MSE is 0 + Irreducible error. Therefore, the irreducible error is the minimum value of the expected test MSE. 
+
+### Question 10
+
+
+$E[(y_0 - \hat{f}(x_0))^2] = Var(\hat{f}(x_0)) + [Bias(\hat{f}(x_0))]^2 + Var(\epsilon)$
+
+$= E[(\hat{f}(x_0)-E[\hat{f}(x_0)])^2] + [E[\hat{f}(x_0)]-f(x_0)]^2 + Var(\epsilon)$
+
+
+$\bullet E[(\hat{f}(x_0)-E[\hat{f}(x_0)])^2] = 0$
+$\bullet [E[\hat{f}(x_0)]-f(x_0)]^2 = 0$
+
+
+$E[(y_0 - \hat{f}(x_0))^2] = 0 + 0 + Var(\epsilon) = Var(\epsilon)$
+
+
+
+
+
+
+
+
 
