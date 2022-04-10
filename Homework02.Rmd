@@ -5,8 +5,6 @@ output:
     theme: yeti
     toc: true
     toc_float: true
-  github_document:
-    toc: true
 ---
 
 ```{r setup, include=FALSE}
